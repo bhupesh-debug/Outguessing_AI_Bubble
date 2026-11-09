@@ -1,0 +1,132 @@
+{
+  "seed": 20261108,
+  "trials": 100000,
+  "scenario_probabilities": {
+    "Bear": 0.32,
+    "Base": 0.45,
+    "Bull": 0.23
+  },
+  "scenario_returns_percent": {
+    "Leveraged tail": {
+      "Bear": {
+        "mean": -50,
+        "sd": 15
+      },
+      "Base": {
+        "mean": 5,
+        "sd": 10
+      },
+      "Bull": {
+        "mean": 40,
+        "sd": 15
+      }
+    },
+    "Profitable core": {
+      "Bear": {
+        "mean": -20,
+        "sd": 10
+      },
+      "Base": {
+        "mean": 8,
+        "sd": 6
+      },
+      "Bull": {
+        "mean": 15,
+        "sd": 8
+      }
+    },
+    "Diversified": {
+      "Bear": {
+        "mean": -8,
+        "sd": 5
+      },
+      "Base": {
+        "mean": 6,
+        "sd": 3
+      },
+      "Bull": {
+        "mean": 9,
+        "sd": 4
+      }
+    }
+  },
+  "ranges_scenario_weighted": {
+    "Leveraged tail": {
+      "worst_5th": 34.9,
+      "base_median": 102.29,
+      "best_95th": 151.64,
+      "p_loss": 0.4618,
+      "p_below_80": 0.3172,
+      "mean_final": 95.31
+    },
+    "Profitable core": {
+      "worst_5th": 69.89,
+      "base_median": 105.51,
+      "best_95th": 121.77,
+      "p_loss": 0.3628,
+      "p_below_80": 0.1605,
+      "mean_final": 100.58
+    },
+    "Diversified": {
+      "worst_5th": 86.92,
+      "base_median": 104.67,
+      "best_95th": 112.52,
+      "p_loss": 0.3163,
+      "p_below_80": 0.0028,
+      "mean_final": 102.18
+    }
+  },
+  "conditional_medians_by_scenario": {
+    "Leveraged tail": {
+      "Bear": {
+        "median_final": 50.02313370707097,
+        "p5_final": 25.540418105446474,
+        "p95_final": 74.53527949208328
+      },
+      "Base": {
+        "median_final": 105.05084953816578,
+        "p5_final": 88.66665419404652,
+        "p95_final": 121.40248900842525
+      },
+      "Bull": {
+        "median_final": 139.99411937446314,
+        "p5_final": 115.32433379241115,
+        "p95_final": 164.59747596790112
+      }
+    },
+    "Profitable core": {
+      "Bear": {
+        "median_final": 80.00258246962028,
+        "p5_final": 63.61003197350012,
+        "p95_final": 96.47762331306168
+      },
+      "Base": {
+        "median_final": 108.0088313579489,
+        "p5_final": 98.17096833980052,
+        "p95_final": 117.96889838184748
+      },
+      "Bull": {
+        "median_final": 114.97143086101163,
+        "p5_final": 101.83243898971648,
+        "p95_final": 128.05220777617726
+      }
+    },
+    "Diversified": {
+      "Bear": {
+        "median_final": 92.00875586954976,
+        "p5_final": 83.74822109121398,
+        "p95_final": 100.27092905940368
+      },
+      "Base": {
+        "median_final": 106.00049367974157,
+        "p5_final": 101.0591437114405,
+        "p95_final": 110.92725294380253
+      },
+      "Bull": {
+        "median_final": 109.00718384035372,
+        "p5_final": 102.44338192589676,
+        "p95_final": 115.60126165111859
+      }
+    }
+  }
+}

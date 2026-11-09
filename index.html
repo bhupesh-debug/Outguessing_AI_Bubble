@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outguessing the AI Bubble — Interactive Simulator</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --line:#30363d; --ink:#e6edf3; --mut:#8b949e;
+          --navy:#2f5d8a; --red:#b00020; --green:#2e7d32; --gold:#d29922; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+  header { padding:28px 20px 10px; max-width:1060px; margin:0 auto; }
+  h1 { font-size:26px; margin:0 0 6px; }
+  h1 span { color:var(--gold); }
+  .sub { color:var(--mut); font-size:14px; line-height:1.5; max-width:820px; }
+  .warn { max-width:1060px; margin:14px auto 0; padding:0 20px; }
+  .warn div { border:1px solid var(--gold); border-radius:8px; padding:10px 14px;
+              font-size:13px; line-height:1.5; color:#f0d9a0; background:#241f10; }
+  main { max-width:1060px; margin:0 auto; padding:18px 20px 40px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:820px){ .grid{ grid-template-columns:1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
+  .card h2 { font-size:15px; margin:0 0 4px; text-transform:uppercase; letter-spacing:.06em; color:var(--gold); }
+  .card p.note { color:var(--mut); font-size:12.5px; line-height:1.5; margin:4px 0 12px; }
+  .ctl { margin:12px 0; }
+  .ctl label { display:flex; justify-content:space-between; font-size:13.5px; margin-bottom:4px; }
+  .ctl label b { font-variant-numeric:tabular-nums; }
+  input[type=range]{ width:100%; accent-color:var(--navy); }
+  .seg { display:flex; gap:6px; flex-wrap:wrap; }
+  .seg button { background:#21262d; color:var(--ink); border:1px solid var(--line);
+                border-radius:6px; padding:7px 12px; font-size:13px; cursor:pointer; }
+  .seg button.on { background:var(--navy); border-color:var(--navy); color:#fff; }
+  button.run { background:var(--navy); color:#fff; border:0; border-radius:6px;
+               padding:10px 18px; font-size:14px; cursor:pointer; margin-top:6px; }
+  button.run:hover { filter:brightness(1.15); }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; margin-top:8px; }
+  th, td { padding:6px 8px; text-align:right; border-bottom:1px solid var(--line);
+           font-variant-numeric:tabular-nums; }
+  th:first-child, td:first-child { text-align:left; }
+  th { color:var(--mut); font-weight:600; }
+  .big { font-size:26px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .big small { font-size:13px; color:var(--mut); font-weight:400; }
+  .kpi { display:flex; gap:18px; flex-wrap:wrap; margin:8px 0 4px; }
+  .kpi div { min-width:120px; }
+  .kpi .lbl { font-size:11.5px; color:var(--mut); text-transform:uppercase; letter-spacing:.05em; }
+  .red { color:#ff7b72; } .green { color:#3fb950; } .gold { color:var(--gold); }
+  canvas { width:100%; height:180px; background:#0d1117; border:1px solid var(--line); border-radius:6px; }
+  footer { max-width:1060px; margin:0 auto; padding:0 20px 40px; color:var(--mut); font-size:12.5px; line-height:1.6; }
+  footer a { color:#58a6ff; }
+  .est { font-size:11.5px; color:var(--mut); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Outguessing the AI Bubble <span>— Interactive Simulator</span></h1>
+  <p class="sub">A financing bubble is forming in the leveraged tail of AI infrastructure — not a technology
+  bubble. This calculator re-runs the article's three Monte Carlo simulations in your browser, so you can
+  change the inputs and see how wide the range of honest outcomes is. As of <b>November 8, 2026</b>.
+  Every number below is a <b>model estimate</b>, not a fact and not a forecast.</p>
+</header>
+<div class="warn"><div><b>Research and education — not investment advice.</b> Nothing here is a recommendation to buy or
+sell anything. The article's own verdict: a bubble is <i>forming</i> in the financing layer; a pop is <i>not yet proven</i>.
+Audited OpenAI/Anthropic financials do not exist publicly; no hyperscaler discloses GPU utilisation; exact Oracle
+contract terms are not in any public filing.</div></div>
+
+<main>
+  <div class="grid">
+    <!-- ============ CONTROLS ============ -->
+    <section class="card">
+      <h2>Your inputs</h2>
+      <p class="note">Defaults reproduce the article's own inputs. Move a slider and press Re-run — the
+      simulations use 10,000 seeded draws, so the same inputs always give the same outputs. Small sampling
+      differences vs the article's 100,000-trial run are expected.</p>
+
+      <div class="ctl"><label>Scenario for the 12-month outcome <b id="scenLabel">Weighted (Bear 32% / Base 45% / Bull 23%)</b></label>
+        <div class="seg" id="scenSeg">
+          <button data-scen="weighted" class="on">Weighted</button>
+          <button data-scen="Bear">Bear</button>
+          <button data-scen="Base">Base</button>
+          <button data-scen="Bull">Bull</button>
+        </div>
+      </div>
+
+      <div class="ctl"><label>Lab sector: revenue per $1 of compute today (R₀) <b id="r0Val">1.30</b></label>
+        <input type="range" id="r0" min="0.2" max="3" step="0.05" value="1.3">
+        <p class="note">Anchors: Anthropic ≈ $2.08 (Q2 2026, secondary report); OpenAI ≈ $0.59 (spends $1.69 per $1 earned, 2025).</p>
+      </div>
+
+      <div class="ctl"><label>Lab sector: annual improvement in the ratio <b id="gVal">15%</b></label>
+        <input type="range" id="gMean" min="-20" max="60" step="1" value="15">
+        <p class="note">Deliberately conservative mean in the article — capability per dollar improves far faster than revenue per unit of compute.</p>
+      </div>
+
+      <div class="ctl"><label>Hyperscalers: 2026 operating-cash-flow growth <b id="ocfVal">10%</b></label>
+        <input type="range" id="ocfMean" min="0" max="20" step="1" value="10">
+      </div>
+
+      <div class="ctl"><label>Hyperscalers: 2026 capex vs guidance <b id="cxVal">100%</b></label>
+        <input type="range" id="cxMult" min="80" max="130" step="1" value="100">
+        <p class="note">Guidance ($bn): Amazon 200 · Google 180 · Meta 125 · Microsoft 140. Article models capex as guidance × U(0.95, 1.10).</p>
+      </div>
+
+      <div class="ctl"><label>Your allocation — Leveraged tail <b id="wTailVal">33%</b></label>
+        <input type="range" id="wTail" min="0" max="100" step="1" value="33"></div>
+      <div class="ctl"><label>Your allocation — Profitable core <b id="wCoreVal">34%</b></label>
+        <input type="range" id="wCore" min="0" max="100" step="1" value="34"></div>
+      <div class="ctl"><label>Your allocation — Diversified <b id="wDivVal">33%</b></label>
+        <input type="range" id="wDiv" min="0" max="100" step="1" value="33"></div>
+      <p class="note" id="allocNote">Weights are normalised to 100%.</p>
+
+      <button class="run" id="runBtn">▶ Re-run simulations (10,000 draws)</button>
+      <button class="run" id="seedBtn" style="background:#21262d">↻ New random seed</button>
+      <p class="note">Seed: <b id="seedLabel">20261108</b> · Draws: 10,000 per simulation</p>
+    </section>
+
+    <!-- ============ MC-1 ============ -->
+    <section class="card">
+      <h2>MC-1 · Does the lab sector pay for its own compute?</h2>
+      <p class="note">Revenue per $1 of compute, 2029. Self-funding line: 1.0. Healthy threshold: 1.50. <span class="est">(Model estimate.)</span></p>
+      <div class="kpi">
+        <div><div class="lbl">Median 2029 ratio</div><div class="big" id="mc1Med">—</div></div>
+        <div><div class="lbl">5th – 95th pct</div><div class="big" id="mc1Range" style="font-size:19px;padding-top:5px">—</div></div>
+      </div>
+      <div class="kpi">
+        <div><div class="lbl">P(still below self-funding)</div><div class="big red" id="mc1Plt1">—</div></div>
+        <div><div class="lbl">P(above healthy 1.50)</div><div class="big green" id="mc1Pgt15">—</div></div>
+        <div><div class="lbl">P(deeply underwater &lt; 0.50)</div><div class="big red" id="mc1Plt05">—</div></div>
+      </div>
+      <p class="note">Article (100,000 trials): median 1.79 · 5th–95th 0.54–4.05 · P(&lt;1.0) 17.9% · P(&gt;1.5) 61.9% · P(&lt;0.5) 4.3%.</p>
+    </section>
+
+    <!-- ============ MC-2 ============ -->
+    <section class="card">
+      <h2>MC-2 · Do the hyperscalers burn cash in 2026?</h2>
+      <p class="note">Free cash flow = 2026 operating cash flow − 2026 capex, $bn. <span class="est">(Model estimate.)</span></p>
+      <table>
+        <tr><th>Company</th><th>P(FCF &lt; 0)</th><th>Median FCF</th><th>5th – 95th</th></tr>
+        <tr><td>Amazon</td><td id="amzP">—</td><td id="amzM">—</td><td id="amzR">—</td></tr>
+        <tr><td>Google</td><td id="gooP">—</td><td id="gooM">—</td><td id="gooR">—</td></tr>
+        <tr><td>Meta</td><td id="metP">—</td><td id="metM">—</td><td id="metR">—</td></tr>
+        <tr><td>Microsoft</td><td id="msfP">—</td><td id="msfM">—</td><td id="msfR">—</td></tr>
+      </table>
+      <div class="kpi" style="margin-top:12px">
+        <div><div class="lbl">P(2+ of 4 burn cash)</div><div class="big red" id="mc2Joint">—</div></div>
+        <div><div class="lbl">Expected # burning cash</div><div class="big" id="mc2Exp">—</div></div>
+      </div>
+      <p class="note">Article (100,000 trials): Amazon ~100% (median −$51.6bn) · Google 58.8% · Meta 52.6% · Microsoft 1.0% · P(≥2 negative) 80.8%.</p>
+    </section>
+
+    <!-- ============ MC-3 ============ -->
+    <section class="card">
+      <h2>MC-3 · What does $100 risk over 12 months?</h2>
+      <p class="note">Value of $100 after 12 months, per position. <span class="est">(Model estimates. Scenario returns are teaching assumptions.)</span></p>
+      <table>
+        <tr><th>Position</th><th>Worst (5th)</th><th>Base (median)</th><th>Best (95th)</th><th>P(loss &gt;20%)</th></tr>
+        <tr><td>Leveraged tail</td><td id="tailW">—</td><td id="tailB">—</td><td id="tailBe">—</td><td id="tailP">—</td></tr>
+        <tr><td>Profitable core</td><td id="coreW">—</td><td id="coreB">—</td><td id="coreBe">—</td><td id="coreP">—</td></tr>
+        <tr><td>Diversified</td><td id="divW">—</td><td id="divB">—</td><td id="divBe">—</td><td id="divP">—</td></tr>
+        <tr><td><b>Your blend</b></td><td id="blW">—</td><td id="blB">—</td><td id="blBe">—</td><td id="blP">—</td></tr>
+      </table>
+      <p class="note">Article (100,000 trials, scenario-weighted): tail $102.29 ($34.90–$151.64, P&gt;20% loss 31.7%) · core $105.51 (16.1%) · diversified $104.67 (0.3%).</p>
+      <div class="ctl"><label>Distribution chart — show <b id="chartLabel">Leveraged tail</b></label>
+        <div class="seg" id="chartSeg">
+          <button data-bucket="Leveraged tail" class="on">Leveraged tail</button>
+          <button data-bucket="Profitable core">Profitable core</button>
+          <button data-bucket="Diversified">Diversified</button>
+          <button data-bucket="blend">Your blend</button>
+        </div>
+      </div>
+      <canvas id="hist" width="640" height="180"></canvas>
+      <p class="note">The tail's median is fine; its downside is a cliff. Diversification barely changes the median — and nearly eliminates the catastrophic branch.</p>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <p><b>What this simulator cannot do.</b> The simulations inherit every weakness of their inputs. MC-1 blends two anchors that
+  measure different things. MC-2/MC-3 distributions are assumptions, not measurements. The three simulations are not independent — a bad
+  prospectus moves all three at once, so their probabilities cannot simply be multiplied. A Monte Carlo cannot discover a risk nobody put
+  into the model — the power constraint appears nowhere in these numbers.</p>
+  <p><b>Sources.</b> Dimri, B. C. (2026, Nov 8). <i>Outguessing the AI Bubble</i> · Dimri, B. C. (2026, Nov 7). <i>AI Bubble Critical
+  Analysis</i> (deep-research report) · IMF, Global Financial Stability Report (Oct 13, 2026) · BIS Bulletin No. 137 (Oct 1, 2026) ·
+  Stanford HAI, AI Index Report 2025 · Platformonomics (Feb 25, 2026). Full references in the article.</p>
+  <p><b>Author.</b> Bhupesh Chandra Dimri — Financial Analyst, JPMorgan Chase; M.S. Accounting Analytics &amp; Data Technology, Pace
+  University (Dec 2025). GitHub: <a href="https://github.com/bhupesh-debug">bhupesh-debug</a> · Contact: bhupesh7cd@gmail.com ·
+  Full project: <a href="README.md">README</a> · <a href="HYPOTHESIS.md">Hypothesis</a> · <a href="SCENARIOS.md">Scenarios</a> ·
+  <a href="MONTE_CARLO.md">Monte Carlo</a> · <a href="SWOT.md">SWOT</a> · <a href="RECOMMENDATION.md">Recommendation</a> ·
+  <a href="DIAGNOSTIC_QUESTION.md">Diagnostic Question</a></p>
+</footer>
+
+<script>
+/* =====================================================================
+   Outguessing the AI Bubble — client-side simulator.
+   Pure math functions are defined first and exported for Node testing
+   (module.exports guard at the bottom). DOM wiring runs only in a browser.
+   No external requests: no CDN, no fonts, no images, no analytics.
+   Seeded RNG (mulberry32) + Box-Muller normal sampler.
+   ===================================================================== */
+
+// --- Seeded RNG ---
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function makeRandn(rng) {
+  let spare = null;
+  return function randn() {
+    if (spare !== null) { const v = spare; spare = null; return v; }
+    let u = 0, v = 0, s = 0;
+    do { u = rng() * 2 - 1; v = rng() * 2 - 1; s = u * u + v * v; } while (s >= 1 || s === 0);
+    const m = Math.sqrt(-2 * Math.log(s) / s);
+    spare = v * m;
+    return u * m;
+  };
+}
+function truncNormal(rng, randn, mu, sd, lo, hi) {
+  const x = mu + sd * randn();
+  return x < lo ? lo : (x > hi ? hi : x);
+}
+function quantile(sorted, p) {
+  const i = (sorted.length - 1) * p;
+  const lo = Math.floor(i), hi = Math.ceil(i);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+}
+function summarize(arr) {
+  const s = arr.slice().sort((a, b) => a - b);
+  const mean = s.reduce((a, b) => a + b, 0) / s.length;
+  return { median: quantile(s, 0.5), p5: quantile(s, 0.05), p95: quantile(s, 0.95),
+           mean: mean, n: s.length };
+}
+
+// --- Fixed model data (article figures) ---
+const COMPANIES = [
+  { name: "Amazon",    ocf2025: 139.5, capex: 200 },
+  { name: "Google",    ocf2025: 164.7, capex: 180 },
+  { name: "Meta",      ocf2025: 115.8, capex: 125 },
+  { name: "Microsoft", ocf2025: 160.5, capex: 140 },
+];
+// (bear mu/sd, base mu/sd, bull mu/sd) in percent — teaching assumptions.
+const BUCKETS = {
+  "Leveraged tail":  { bear: [-50, 15], base: [5, 10],  bull: [40, 15] },
+  "Profitable core": { bear: [-20, 10], base: [8, 6],   bull: [15, 8] },
+  "Diversified":     { bear: [-8, 5],   base: [6, 3],   bull: [9, 4] },
+};
+const SCEN_P = { Bear: 0.32, Base: 0.45, Bull: 0.23 };
+
+// --- MC-1: lab revenue per $1 of compute ---
+function runMC1(p, n, seed) {
+  const rng = mulberry32(seed), randn = makeRandn(rng);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    let r = truncNormal(rng, randn, p.r0, 0.50, 0.20, 3.00);
+    for (let y = 0; y < 3; y++) {
+      const g = truncNormal(rng, randn, p.gMean, 0.25, -0.50, 1.00);
+      r = r * (1 + g);
+    }
+    out.push(r);
+  }
+  const s = summarize(out);
+  return { median2029: s.median, p5: s.p5, p95: s.p95,
+           pLt1: out.filter(v => v < 1).length / n,
+           pGt15: out.filter(v => v > 1.5).length / n,
+           pLt05: out.filter(v => v < 0.5).length / n };
+}
+
+// --- MC-2: hyperscaler 2026 free cash flow ---
+function runMC2(p, n, seed) {
+  const rng = mulberry32(seed), randn = makeRandn(rng);
+  const per = COMPANIES.map(c => ({ name: c.name, fcf: [] }));
+  const negCounts = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    COMPANIES.forEach((c, j) => {
+      const ocf = c.ocf2025 * (1 + p.ocfMean + 0.08 * randn());
+      const cx = c.capex * p.cxMult * (0.95 + 0.15 * rng());
+      const fcf = ocf - cx;
+      per[j].fcf.push(fcf);
+      if (fcf < 0) negCounts[i]++;
+    });
+  }
+  const rows = per.map(r => {
+    const s = summarize(r.fcf);
+    return { name: r.name, pNeg: r.fcf.filter(v => v < 0).length / n,
+             median: s.median, p5: s.p5, p95: s.p95 };
+  });
+  return { rows: rows,
+           pGe2: negCounts.filter(v => v >= 2).length / n,
+           expected: negCounts.reduce((a, b) => a + b, 0) / n };
+}
+
+// --- MC-3: $100 after 12 months, per bucket + blended allocation ---
+function runMC3(p, n, seed) {
+  const rng = mulberry32(seed), randn = makeRandn(rng);
+  const names = Object.keys(BUCKETS);
+  const finals = {}; names.forEach(k => finals[k] = []);
+  const blend = [];
+  const w = p.weights; // {bucket: weight 0..1}, sums to 1
+  for (let i = 0; i < n; i++) {
+    let scen;
+    if (p.scenario === "weighted") {
+      const u = rng();
+      scen = u < 0.32 ? "Bear" : (u < 0.77 ? "Base" : "Bull");
+    } else { scen = p.scenario; }
+    const key = scen === "Bear" ? "bear" : (scen === "Base" ? "base" : "bull");
+    let b = 0;
+    names.forEach(k => {
+      const prm = BUCKETS[k][key];
+      let ret = prm[0] + prm[1] * randn();
+      ret = Math.max(-95, Math.min(150, ret)) / 100;
+      const fin = 100 * (1 + ret);
+      finals[k].push(fin);
+      b += (w[k] || 0) * fin;
+    });
+    blend.push(b);
+  }
+  const out = {};
+  names.forEach(k => {
+    const s = summarize(finals[k]);
+    out[k] = { median: s.median, p5: s.p5, p95: s.p95,
+               pLoss: finals[k].filter(v => v < 100).length / n,
+               pBelow80: finals[k].filter(v => v < 80).length / n,
+               finals: finals[k] };
+  });
+  const bs = summarize(blend);
+  out.blend = { median: bs.median, p5: bs.p5, p95: bs.p95,
+                pLoss: blend.filter(v => v < 100).length / n,
+                pBelow80: blend.filter(v => v < 80).length / n,
+                finals: blend };
+  return out;
+}
+
+// --- DOM wiring (browser only) ---
+if (typeof document !== "undefined") {
+  const $ = id => document.getElementById(id);
+  const N = 10000;
+  let seed = 20261108;
+  let scenario = "weighted";
+  let chartBucket = "Leveraged tail";
+  let lastMC3 = null;
+
+  const fmt$ = (v, d) => "$" + v.toFixed(d === undefined ? 2 : d);
+  const fmtPct = v => (v * 100).toFixed(1) + "%";
+  const fmtBn = v => (v < 0 ? "−$" : "$") + Math.abs(v).toFixed(1) + "bn";
+
+  function readInputs() {
+    const wt = +$("wTail").value, wc = +$("wCore").value, wd = +$("wDiv").value;
+    const tot = wt + wc + wd || 1;
+    return {
+      r0: +$("r0").value,
+      gMean: +$("gMean").value / 100,
+      ocfMean: +$("ocfMean").value / 100,
+      cxMult: +$("cxMult").value / 100,
+      scenario: scenario,
+      weights: { "Leveraged tail": wt / tot, "Profitable core": wc / tot, "Diversified": wd / tot },
+    };
+  }
+  function refreshLabels() {
+    $("r0Val").textContent = (+$("r0").value).toFixed(2);
+    $("gVal").textContent = $("gMean").value + "%";
+    $("ocfVal").textContent = $("ocfMean").value + "%";
+    $("cxVal").textContent = $("cxMult").value + "%";
+    $("wTailVal").textContent = $("wTail").value + "%";
+    $("wCoreVal").textContent = $("wCore").value + "%";
+    $("wDivVal").textContent = $("wDiv").value + "%";
+    $("seedLabel").textContent = seed;
+    const lbl = { weighted: "Weighted (Bear 32% / Base 45% / Bull 23%)", Bear: "Bear", Base: "Base", Bull: "Bull" };
+    $("scenLabel").textContent = lbl[scenario];
+    $("chartLabel").textContent = chartBucket === "blend" ? "Your blend" : chartBucket;
+  }
+  function drawHist(values) {
+    const cv = $("hist"), ctx = cv.getContext("2d");
+    const W = cv.width, H = cv.height;
+    ctx.clearRect(0, 0, W, H);
+    const lo = Math.min.apply(null, values), hi = Math.max.apply(null, values);
+    const bins = 48, counts = new Array(bins).fill(0);
+    values.forEach(v => { let b = Math.floor((v - lo) / (hi - lo) * bins); if (b >= bins) b = bins - 1; counts[b]++; });
+    const mx = Math.max.apply(null, counts);
+    const bw = W / bins;
+    ctx.fillStyle = "#2f5d8a";
+    counts.forEach((c, i) => { const h = (c / mx) * (H - 24); ctx.fillRect(i * bw + 1, H - 20 - h, bw - 2, h); });
+    // $100 line
+    const x100 = (100 - lo) / (hi - lo) * W;
+    ctx.strokeStyle = "#e6edf3"; ctx.setLineDash([5, 4]); ctx.beginPath();
+    ctx.moveTo(x100, 4); ctx.lineTo(x100, H - 20); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = "#8b949e"; ctx.font = "11px sans-serif";
+    ctx.fillText("$" + lo.toFixed(0), 4, H - 6);
+    ctx.fillText("$100 start", Math.min(x100 + 4, W - 70), 14);
+    ctx.fillText("$" + hi.toFixed(0), W - 46, H - 6);
+  }
+  function runAll() {
+    refreshLabels();
+    const p = readInputs();
+    const mc1 = runMC1(p, N, seed);
+    $("mc1Med").textContent = mc1.median2029.toFixed(2);
+    $("mc1Range").textContent = mc1.p5.toFixed(2) + " – " + mc1.p95.toFixed(2);
+    $("mc1Plt1").textContent = fmtPct(mc1.pLt1);
+    $("mc1Pgt15").textContent = fmtPct(mc1.pGt15);
+    $("mc1Plt05").textContent = fmtPct(mc1.pLt05);
+
+    const mc2 = runMC2(p, N, seed + 1);
+    const ids = { Amazon: ["amzP", "amzM", "amzR"], Google: ["gooP", "gooM", "gooR"],
+                  Meta: ["metP", "metM", "metR"], Microsoft: ["msfP", "msfM", "msfR"] };
+    mc2.rows.forEach(r => {
+      $(ids[r.name][0]).textContent = fmtPct(r.pNeg);
+      $(ids[r.name][1]).textContent = fmtBn(r.median);
+      $(ids[r.name][2]).textContent = fmtBn(r.p5) + " to " + fmtBn(r.p95);
+    });
+    $("mc2Joint").textContent = fmtPct(mc2.pGe2);
+    $("mc2Exp").textContent = mc2.expected.toFixed(2);
+
+    const mc3 = runMC3(p, N, seed + 2);
+    lastMC3 = mc3;
+    const rowIds = { "Leveraged tail": ["tailW", "tailB", "tailBe", "tailP"],
+                     "Profitable core": ["coreW", "coreB", "coreBe", "coreP"],
+                     "Diversified": ["divW", "divB", "divBe", "divP"] };
+    Object.keys(rowIds).forEach(k => {
+      const r = mc3[k], ids2 = rowIds[k];
+      $(ids2[0]).textContent = fmt$(r.p5); $(ids2[1]).textContent = fmt$(r.median);
+      $(ids2[2]).textContent = fmt$(r.p95); $(ids2[3]).textContent = fmtPct(r.pBelow80);
+    });
+    $("blW").textContent = fmt$(mc3.blend.p5); $("blB").textContent = fmt$(mc3.blend.median);
+    $("blBe").textContent = fmt$(mc3.blend.p95); $("blP").textContent = fmtPct(mc3.blend.pBelow80);
+    drawHist(mc3[chartBucket].finals);
+  }
+  document.querySelectorAll("#scenSeg button").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll("#scenSeg button").forEach(x => x.classList.remove("on"));
+    b.classList.add("on"); scenario = b.dataset.scen; runAll();
+  }));
+  document.querySelectorAll("#chartSeg button").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll("#chartSeg button").forEach(x => x.classList.remove("on"));
+    b.classList.add("on"); chartBucket = b.dataset.bucket;
+    if (lastMC3) { refreshLabels(); drawHist(lastMC3[chartBucket].finals); }
+  }));
+  ["r0", "gMean", "ocfMean", "cxMult", "wTail", "wCore", "wDiv"].forEach(id =>
+    $(id).addEventListener("input", refreshLabels));
+  $("runBtn").addEventListener("click", runAll);
+  $("seedBtn").addEventListener("click", () => { seed = (Math.random() * 1e9) | 0; runAll(); });
+  runAll();
+}
+
+// --- Node export for headless testing ---
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { mulberry32, makeRandn, truncNormal, quantile, summarize,
+                     runMC1, runMC2, runMC3, COMPANIES, BUCKETS, SCEN_P };
+}
+</script>
+</body>
+</html>
